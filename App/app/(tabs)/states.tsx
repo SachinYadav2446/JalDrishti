@@ -1,9 +1,10 @@
-import React from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AdvisoryModal from '@/components/AdvisoryModal';
 import { useWideLayout } from '@/components/AppShell';
-import { ArrowDown, ArrowUp, Award, Droplets, Info } from '@/components/Icons';
+import { ArrowDown, ArrowUp, Award, Droplets, FileText, Info } from '@/components/Icons';
 import ThemeToggle from '@/components/ThemeToggle';
 import {
   Card,
@@ -30,6 +31,8 @@ interface StateRow {
 export default function StatesScreen() {
   const wide = useWideLayout();
   const { colors, isDark } = useTheme();
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
+  const [targetState, setTargetState] = useState<string | null>(null);
   const { data, error, loading, reload } = useApi<StateRow[]>('/states/');
   const rows = (data ?? []).filter((r) => r.stations > 0);
   const worstTrend = Math.max(...rows.map((r) => Math.abs(r.avg_trend ?? 0)), 0.001);
@@ -73,6 +76,23 @@ export default function StatesScreen() {
           title={`State Groundwater Vulnerability Index (${rows.length ? rows.length : (loading ? '…' : '0')})`}
           subtitle="Ranked from highest rate of depletion to fastest recovering"
           icon={Award}
+          action={
+            <Pressable
+              onPress={() => {
+                setTargetState(null);
+                setAdvisoryOpen(true);
+              }}
+              style={[
+                tw`flex-row items-center px-3 py-1.5 rounded-xl border shadow-2xs`,
+                {
+                  backgroundColor: colors.primaryBlue,
+                  borderColor: colors.primaryBlue,
+                },
+              ]}>
+              <FileText size={12} color="#FFFFFF" strokeWidth={2} style={tw`mr-1.5`} />
+              <Text style={tw`text-white text-xs font-semibold`}>Advisory PDF</Text>
+            </Pressable>
+          }
         />
         <Card style={tw`py-1`}>
           {loading && !data ? (
@@ -89,7 +109,13 @@ export default function StatesScreen() {
               const atRiskPct = Math.round((r.at_risk / Math.max(r.stations, 1)) * 100);
 
               return (
-                <View key={r.state} style={[tw`py-3 px-3 border-b`, { borderColor: colors.borderColor }]}>
+                <Pressable
+                  key={r.state}
+                  onPress={() => {
+                    setTargetState(r.state);
+                    setAdvisoryOpen(true);
+                  }}
+                  style={[tw`py-3 px-3 border-b transition-all`, { borderColor: colors.borderColor }]}>
                   <View style={tw`flex-row items-center justify-between`}>
                     <View style={tw`flex-row items-center flex-1 pr-2`}>
                       <View
@@ -178,7 +204,7 @@ export default function StatesScreen() {
                       Avg Recharge: <Text style={[tw`font-medium`, { color: colors.textPrimary }]}>{fmt(r.avg_recharge, 0, ' mm')}</Text>
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })
           ) : (
@@ -231,6 +257,12 @@ export default function StatesScreen() {
           ))}
         </GlassCard>
       </ScrollView>
+
+      <AdvisoryModal
+        visible={advisoryOpen}
+        onClose={() => setAdvisoryOpen(false)}
+        initialState={targetState}
+      />
     </SafeAreaView>
   );
 }

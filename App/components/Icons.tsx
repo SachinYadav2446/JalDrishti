@@ -385,3 +385,29 @@ export const Send = ({ size = 20, color = '#64748b', strokeWidth = 2, style }: I
     <Path d="M22 2 11 13" />
   </Svg>
 );
+
+export const Printer = ({ size = 20, color = '#64748b', strokeWidth = 2, style }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+    <Polyline points="6 9 6 2 18 2 18 9" />
+    <Path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <Rect width="12" height="8" x="6" y="14" />
+  </Svg>
+);
+
+export const Download = ({ size = 20, color = '#64748b', strokeWidth = 2, style }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+    <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <Polyline points="7 10 12 15 17 10" />
+    <Line x1="12" x2="12" y1="15" y2="3" />
+  </Svg>
+);
+
+export const FileText = ({ size = 20, color = '#64748b', strokeWidth = 2, style }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+    <Path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+    <Polyline points="14 2 14 8 20 8" />
+    <Line x1="16" x2="8" y1="13" y2="13" />
+    <Line x1="16" x2="8" y1="17" y2="17" />
+    <Line x1="10" x2="8" y1="9" y2="9" />
+  </Svg>
+);

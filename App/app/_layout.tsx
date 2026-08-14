@@ -51,6 +51,33 @@ export default function RootLayout() {
             display: none !important;
           }
         }
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #cgwb-advisory-printable, #cgwb-advisory-printable * {
+            visibility: visible !important;
+          }
+          #cgwb-advisory-printable {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 15mm 10mm;
+          }
+        }
       `;
       document.head.appendChild(style);
     }
