@@ -171,8 +171,17 @@ def _round(v, d=3):
     return round(v, d) if v is not None else None
 
 
+def _clean(qs):
+    """Stations whose telemetry passed critical sensor quality checks."""
+    return (
+        qs.exclude(anomalies__icontains="flatline")
+        .exclude(anomalies__icontains="out_of_range")
+        .exclude(anomalies__icontains="suspect_trend")
+    )
+
+
 def tool_get_national_summary():
-    qs = Station.objects.filter(anomalies=[])
+    qs = _clean(Station.objects.all())
     agg = qs.aggregate(
         total=Count("id"),
         avg_trend=Avg("trend_m_per_year"),
@@ -194,8 +203,7 @@ def tool_get_national_summary():
 
 def tool_get_state_rankings():
     # Use the same exclusion logic as the dashboard for consistency
-    qs = Station.objects.exclude(anomalies__icontains="flatline").exclude(
-        anomalies__icontains="out_of_range").exclude(anomalies__icontains="suspect_trend")
+    qs = _clean(Station.objects.all())
     rows = (
         qs.values("state")
         .annotate(
@@ -229,7 +237,7 @@ def tool_get_state_summary(state: str):
     if not qs.exists():
         return {"error": f"No stations found for state '{state}'"}
 
-    clean = qs.filter(anomalies=[])
+    clean = _clean(qs)
     agg = clean.aggregate(
         total=Count("id"),
         avg_trend=Avg("trend_m_per_year"),
@@ -301,7 +309,7 @@ def tool_get_station_detail(code: str):
 
 def tool_get_critical_stations(state: str = None, limit=10):
     limit = int(limit) if limit else 10
-    qs = Station.objects.filter(anomalies=[], trend_m_per_year__isnull=False)
+    qs = _clean(Station.objects.all()).filter(trend_m_per_year__isnull=False)
     if state:
         qs = qs.filter(state__icontains=state)
     worst = list(
