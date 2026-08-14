@@ -311,3 +311,160 @@ def chat_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": f"{type(e).__name__}: {str(e)}"}, status=500)
+
+
+@api_view(["GET"])
+@server_cache(60)
+def districts_list(request):
+    """Returns all states and their corresponding districts with station counts."""
+    rows = (
+        Station.objects.values("state", "district")
+        .annotate(stations=Count("id"))
+        .order_by("state", "district")
+    )
+    result = {}
+    for r in rows:
+        st = r["state"]
+        dist = r["district"]
+        if not st or not dist:
+            continue
+        if st not in result:
+            result[st] = []
+        result[st].append({"district": dist, "stations": r["stations"]})
+    return Response(result)
+
+
+@api_view(["GET"])
+def district_advisory(request):
+    """Generates comprehensive CGWB Executive Advisory brief for a specific State/District."""
+    state = request.query_params.get("state")
+    district = request.query_params.get("district")
+
+    qs = Station.objects.all()
+    if state:
+        qs = qs.filter(state__iexact=state)
+    if district:
+        qs = qs.filter(district__iexact=district)
+
+    if not qs.exists():
+        first = Station.objects.first()
+        if first:
+            state, district = first.state, first.district
+            qs = Station.objects.filter(state=state, district=district)
+        else:
+            return Response({"error": "No telemetry data found"}, status=404)
+    else:
+        sample = qs.first()
+        state = state or sample.state
+        district = district or sample.district
+
+    clean = _clean(qs)
+    total_count = qs.count()
+    clean_count = clean.count()
+
+    agg = clean.aggregate(
+        avg_depth=Avg("latest_level_mbgl"),
+        avg_trend=Avg("trend_m_per_year"),
+        avg_recharge=Avg("recharge_mm"),
+        avg_fluctuation=Avg("seasonal_fluctuation_m"),
+        avg_quality=Avg("data_quality"),
+        max_depth=Max("max_level_mbgl"),
+        latest_date=Max("latest_date"),
+    )
+
+    by_category = {c: 0 for c in CATEGORIES}
+    for row in clean.values("category").annotate(n=Count("id")):
+        by_category[row["category"]] = row["n"]
+
+    at_risk = by_category.get("critical", 0) + by_category.get("over_exploited", 0)
+    risk_pct = round((at_risk / max(clean_count, 1)) * 100, 1)
+
+    avg_trend = agg.get("avg_trend") or 0.0
+    if avg_trend > 0.4 or risk_pct >= 40:
+        overall_category = "Over-Exploited"
+        status_color = "#DC2626"
+        vulnerability_score = min(95, int(60 + risk_pct * 0.35))
+    elif avg_trend > 0.15 or risk_pct >= 20:
+        overall_category = "Critical"
+        status_color = "#EA580C"
+        vulnerability_score = min(75, int(45 + risk_pct * 0.3))
+    elif avg_trend > 0.0 or risk_pct >= 10:
+        overall_category = "Semi-Critical"
+        status_color = "#D97706"
+        vulnerability_score = min(55, int(30 + risk_pct * 0.25))
+    else:
+        overall_category = "Safe"
+        status_color = "#059669"
+        vulnerability_score = max(10, int(15 + risk_pct * 0.2))
+
+    stations_data = []
+    for s in qs.order_by("-trend_m_per_year"):
+        trend = s.trend_m_per_year or 0.0
+        cat = s.category or "unknown"
+        if trend > 0.4 or cat == "over_exploited":
+            rec = "Construct Check Dam & Recharge Shaft; Mandatory Drip Irrigation (PMKSY)"
+            priority = "URGENT"
+        elif trend > 0.2 or cat == "critical":
+            rec = "Percolation Tanks & Community Farm Ponds; Restrict deep borewell permits"
+            priority = "HIGH"
+        elif trend > 0.05 or cat == "semi_critical":
+            rec = "Desilt Village Water Bodies & Promote Rooftop Rainwater Harvesting"
+            priority = "MODERATE"
+        else:
+            rec = "Maintain Periodic DWLR Telemetry Surveillance & Recharge Maintenance"
+            priority = "ROUTINE"
+
+        stations_data.append({
+            "code": s.code,
+            "name": s.name,
+            "block": s.block or s.tehsil or "General",
+            "tehsil": s.tehsil or "—",
+            "depth_mbgl": round(s.latest_level_mbgl, 2) if s.latest_level_mbgl else None,
+            "trend_m_yr": round(s.trend_m_per_year, 3) if s.trend_m_per_year else None,
+            "recharge_mm": round(s.recharge_mm, 1) if s.recharge_mm else None,
+            "fluctuation_m": round(s.seasonal_fluctuation_m, 2) if s.seasonal_fluctuation_m else None,
+            "category": s.category,
+            "data_quality": round(s.data_quality, 0) if s.data_quality else None,
+            "anomalies": s.anomalies or [],
+            "recommended_intervention": rec,
+            "priority": priority,
+        })
+
+    flagged_sensors = qs.exclude(anomalies=[]).count()
+
+    summary_text = (
+        f"Groundwater telemetry evaluation for District {district} ({state}) indicates an overall {overall_category.upper()} "
+        f"aquifer stress level with an average annual depletion rate of {abs(avg_trend):.2f} m/year and "
+        f"mean water table depth at {agg.get('avg_depth') or 0:.2f} m bgl. Out of {clean_count} validated DWLR telemetry "
+        f"monitoring stations, {at_risk} station(s) ({risk_pct}%) exhibit severe water table stress. "
+        f"Average monsoon replenishment is estimated at {agg.get('avg_recharge') or 0:.0f} mm using the GEC-2015 "
+        f"Water Table Fluctuation (WTF) standard. Targeted engineering structures including Check Dams, Percolation "
+        f"Tanks, and artificial recharge shafts under PMKSY and Jal Jeevan Mission are recommended for identified high-priority blocks."
+    )
+
+    import datetime
+    today = datetime.date.today().strftime("%d %B %Y")
+    ref_code = f"CGWB/JD-ADV/{state[:3].upper()}/{district[:4].upper()}/{datetime.date.today().year}/001"
+
+    return Response({
+        "reference_no": ref_code,
+        "date": today,
+        "state": state,
+        "district": district,
+        "total_stations": total_count,
+        "clean_stations": clean_count,
+        "overall_category": overall_category,
+        "status_color": status_color,
+        "vulnerability_score": vulnerability_score,
+        "avg_depth_mbgl": round(agg["avg_depth"], 2) if agg["avg_depth"] else None,
+        "avg_trend_m_yr": round(avg_trend, 3),
+        "avg_recharge_mm": round(agg["avg_recharge"], 1) if agg["avg_recharge"] else None,
+        "avg_fluctuation_m": round(agg["avg_fluctuation"], 2) if agg["avg_fluctuation"] else None,
+        "avg_data_quality": round(agg["avg_quality"], 1) if agg["avg_quality"] else None,
+        "by_category": by_category,
+        "at_risk_count": at_risk,
+        "at_risk_pct": risk_pct,
+        "flagged_sensors": flagged_sensors,
+        "executive_summary": summary_text,
+        "stations": stations_data,
+    })

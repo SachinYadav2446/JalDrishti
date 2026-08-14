@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   CloudRain,
   Droplet,
+  FileText,
   Layers,
   Search,
   ShieldCheck,
@@ -20,6 +21,7 @@ import {
   Sun,
   X,
 } from '@/components/Icons';
+import AdvisoryModal from '@/components/AdvisoryModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import {
   AnomalyBadge,
@@ -54,6 +56,7 @@ export default function AnalyticsScreen() {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [code, setCode] = useState<string | null>(params.code ?? null);
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
 
   useEffect(() => {
     if (params.code) setCode(params.code);
@@ -280,11 +283,28 @@ export default function AnalyticsScreen() {
                 <CategoryPill category={d.category} />
               </View>
 
-              <View style={[tw`flex-row items-center justify-between mt-4 pt-3 border-t`, { borderColor: colors.borderColor }]}>
-                <TrendBadge value={d.trend_m_per_year} />
-                <Text style={[tw`text-xs font-normal`, { color: colors.textMuted }]}>
-                  Last Observation: <Text style={[tw`font-semibold`, { color: colors.textPrimary }]}>{d.latest_date || '—'}</Text>
-                </Text>
+              <View style={[tw`flex-row items-center justify-between mt-4 pt-3 border-t flex-wrap gap-2`, { borderColor: colors.borderColor }]}>
+                <View style={tw`flex-row items-center`}>
+                  <TrendBadge value={d.trend_m_per_year} />
+                  <Text style={[tw`text-xs font-normal ml-3`, { color: colors.textMuted }]}>
+                    Last Observation: <Text style={[tw`font-semibold`, { color: colors.textPrimary }]}>{d.latest_date || '—'}</Text>
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={() => setAdvisoryOpen(true)}
+                  style={[
+                    tw`flex-row items-center px-3 py-1.5 rounded-xl border shadow-2xs`,
+                    {
+                      backgroundColor: colors.primaryBlue,
+                      borderColor: colors.primaryBlue,
+                    },
+                  ]}>
+                  <FileText size={13} color="#FFFFFF" strokeWidth={2} style={tw`mr-1.5`} />
+                  <Text style={tw`text-white text-xs font-semibold`}>
+                    District Advisory (PDF)
+                  </Text>
+                </Pressable>
               </View>
             </Card>
 
@@ -508,6 +528,13 @@ export default function AnalyticsScreen() {
           </>
         )}
       </ScrollView>
+
+      <AdvisoryModal
+        visible={advisoryOpen}
+        onClose={() => setAdvisoryOpen(false)}
+        initialState={d?.state}
+        initialDistrict={d?.district}
+      />
     </SafeAreaView>
   );
 }

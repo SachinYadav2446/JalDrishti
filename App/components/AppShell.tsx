@@ -8,11 +8,13 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
+  FileText,
   LayoutDashboard,
   Map,
   TrendingUp,
   User,
 } from '@/components/Icons';
+import AdvisoryModal from '@/components/AdvisoryModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/constants/ThemeContext';
 import tw from '@/constants/tailwind';
@@ -125,6 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const wide = useWideLayout();
   const { colors, isDark } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
   const pathname = usePathname();
 
   if (!wide) return <>{children}</>;
@@ -336,6 +339,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Header Right Actions */}
             <View style={tw`flex-row items-center gap-2.5`}>
+              {/* One-Click CGWB Official Advisory PDF Export Button */}
+              <Pressable
+                onPress={() => setAdvisoryOpen(true)}
+                style={[
+                  tw`rounded-xl px-3.5 py-2 border flex-row items-center shadow-xs transition-all`,
+                  {
+                    backgroundColor: colors.primaryBlue,
+                    borderColor: colors.primaryBlue,
+                  },
+                ]}>
+                <FileText size={14} color="#FFFFFF" strokeWidth={2} style={tw`mr-1.5`} />
+                <Text style={tw`text-white text-xs font-semibold`}>
+                  Export CGWB Advisory
+                </Text>
+              </Pressable>
+
               <View
                 style={[
                   tw`rounded-full px-3.5 py-1.5 border`,
@@ -359,6 +378,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <View style={[tw`flex-1`, { backgroundColor: colors.bgCanvas }]}>{children}</View>
         </View>
       </View>
+
+      {/* Official CGWB District Advisory Modal & PDF Generator */}
+      <AdvisoryModal
+        visible={advisoryOpen}
+        onClose={() => setAdvisoryOpen(false)}
+      />
     </View>
   );
 }

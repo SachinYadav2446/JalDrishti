@@ -10,4 +10,6 @@ urlpatterns = [
     path('states/', views.states),
     path('alerts/', views.alerts),
     path('chat/', views.chat_view),
+    path('districts/', views.districts_list),
+    path('advisory/', views.district_advisory),
 ]

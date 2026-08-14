@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View, useWindowDimensions, Image } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AdvisoryModal from '@/components/AdvisoryModal';
 import { useWideLayout } from '@/components/AppShell';
 import logo from '../../assets/images/logo.png';
 import {
@@ -16,6 +17,7 @@ import {
   CloudRain,
   Cpu,
   Droplet,
+  FileText,
   Info,
   Layers,
   MapPin,
@@ -121,6 +123,7 @@ const defaultSummary: Summary = {
 export default function DashboardScreen() {
   const wide = useWideLayout();
   const { colors, isDark } = useTheme();
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
   // Read here rather than beside chartWidth below: that sits after the early
   // returns, and a hook cannot run conditionally.
   const { width } = useWindowDimensions();
@@ -439,7 +442,27 @@ export default function DashboardScreen() {
               </Text>
             </View>
           </View>
+
+          <View style={[tw`mt-4 pt-3 border-t flex-row items-center justify-between flex-wrap gap-2`, { borderColor: colors.borderColor }]}>
+            <Text style={[tw`text-xs font-normal flex-1 min-w-[200px]`, { color: colors.textMuted }]}>
+              Official GEC-2015 District Assessment &amp; Artificial Recharge Briefs:
+            </Text>
+            <Pressable
+              onPress={() => setAdvisoryOpen(true)}
+              style={[
+                tw`px-3.5 py-2 rounded-xl flex-row items-center shadow-xs border`,
+                {
+                  backgroundColor: colors.primaryBlue,
+                  borderColor: colors.primaryBlue,
+                },
+              ]}>
+              <FileText size={13} color="#FFFFFF" strokeWidth={2} style={tw`mr-1.5`} />
+              <Text style={tw`text-white text-xs font-semibold`}>Export CGWB Advisory PDF →</Text>
+            </Pressable>
+          </View>
         </GlassCard>
+
+        <AdvisoryModal visible={advisoryOpen} onClose={() => setAdvisoryOpen(false)} />
 
         {/* Footer */}
         <View style={[tw`mt-6 pt-3 border-t items-center`, { borderColor: colors.borderColor }]}>
